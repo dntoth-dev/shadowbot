@@ -1,81 +1,72 @@
+from calendar import c
 import logging
 import os
 from dotenv import load_dotenv
 
 import discord
+from discord import Interaction, app_commands
 from discord.ext import commands
 
 load_dotenv()
 
 # Required env vars
 TOKEN = os.getenv("BOT_TOKEN")
-DEV_ID = os.getenv("DEV_ID") or os.getenv("DEV") # numeric ID
+DEV_ID = os.getenv("DEV_ID") or os.getenv("DEV") # numeric ID prioritized
 DEV = os.getenv("DEV")
 SHADOW_ID = os.getenv("SHADOW_ID") or os.getenv("SHADOW")
 SHADOW = os.getenv("SHADOW")
+SHADOW_GUILD = os.getenv("SHADOWS_COMMUNITY_GUILD_ID")
+
+GUILD = discord.Object(id=SHADOW_GUILD)
 
 if not TOKEN:
-    raise SystemExit("Missing BOT_TOKEN in environment (.env)")
+    raise SystemExit("BOT_TOKEN environment variable is required.")
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("shadowbot")
+class MyClient(discord.Client):
+    user = discord.ClientUser
+
+    def __init__(self, *, intents: discord.Intents):
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        self.tree.copy_global_to(guild=GUILD)
+        await self.tree.sync(guild=GUILD)
 
 intents = discord.Intents.default()
-intents.message_content = True
+client = MyClient(intents=intents)
 
-bot = commands.Bot(command_prefix="/", intents=intents)
-
-
-def _matches_identity(member: discord.Member, identity: str | None) -> bool:
-    """
-    Compare a member to an identity value. If the identity looks like an integer,
-    compare against the member's ID. Otherwise compare against the member name.
-    """
-    if not identity:
-        return False
-
-    try:
-        identity_id = int(identity)
-    except ValueError:
-        identity_id = None
-
-    if identity_id is not None:
-        return member.id == identity_id
-
-    # fallback: compare username (not ideal since names can change)
-    return member.name == identity
-
-
-@bot.event
+@client.event
 async def on_ready():
-    logger.info("Logged in as %s (id=%s)", bot.user, bot.user.id)
+    print(f'Logged in as {client.user} (ID: {client.user.id})')
+    print('------')
 
+@client.tree.command()
+async def hello(interaction: discord.Interaction):
+    """Says hello!"""
+    await Interaction.response.send(f'Hello, {Interaction.user.mention}!')
 
-@bot.command(name="devtest")
-async def devtest(ctx: commands.Context):
-    """Dev-only test command."""
-    if _matches_identity(ctx.author, DEV_ID):
-        await ctx.send(
-            "devtest. Hello world!\n"
-            f"`Client connected to Discord Gateway & logged in as {bot.user}.`"
-        )
+@client.tree.command()
+async def ping(interaction: discord.Interaction):
+    """Returns the bot's latency."""
+    await interaction.response.send_message(f'Pong! {int(client.latency * 1000)}ms')
+
+@client.tree.command()
+async def am_i_shadow(interaction: discord.Interaction):
+    if str(interaction.user.id) == SHADOW_ID:
+        await interaction.response.send_message(f'Yes, you are {SHADOW}.')
     else:
-        await ctx.send("You do not have permission to use this command.")
+        await interaction.response.send_message(f"You ain't {SHADOW} :(")
 
-
-@bot.command(name="am-i-shadow", description="Predicts if the message author is Shadow or not.")
-async def am_i_shadow(ctx: commands.Context):
-    """Check if the invoking user is the configured guild owner."""
-    if _matches_identity(ctx.author, SHADOW_ID):
-        await ctx.send(f"Yes, you are {SHADOW}.")
-    else:
-        await ctx.send(f"You ain't {SHADOW} :(")
-
-
-@bot.command(name="pingsb")
-async def pingsb(ctx: commands.Context):
-    await ctx.send(f"Pong! {int(bot.latency*1000)}ms")
+@client.tree.command()
+@commands.is_owner()
+async def devtest(interaction: discord.Interaction):
+    """Dev-only test command usable only by the application/bot owner."""
+    await interaction.response.send_message(
+        "devtest. Hello world!\n"
+        f"`Client connected to Discord Gateway & logged in as {client.user}.`"
+    )
 
 
 if __name__ == "__main__":
-    bot.run(TOKEN)
+    client.run(TOKEN)

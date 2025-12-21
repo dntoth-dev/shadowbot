@@ -74,7 +74,7 @@ async def am_i_shadow(ctx: commands.Context):
 
 @bot.command(name="pingsb")
 async def pingsb(ctx: commands.Context):
-    await ctx.send("Pong!")
+    await ctx.send(f"Pong! {int(bot.latency*1000)}ms")
 
 
 if __name__ == "__main__":

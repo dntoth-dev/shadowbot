@@ -23,7 +23,7 @@ if not TOKEN:
     raise SystemExit("BOT_TOKEN environment variable is required.")
 
 class MyClient(discord.Client):
-    user = discord.ClientUser
+    user = discord.Client.user
 
     def __init__(self, *, intents: discord.Intents):
         super().__init__(intents=intents)
@@ -44,10 +44,10 @@ async def on_ready():
 @client.tree.command()
 async def hello(interaction: discord.Interaction):
     """Says hello!"""
-    await Interaction.response.send(f'Hello, {Interaction.user.mention}!')
+    await Interaction.response.send(f'Hello, {interaction.user.mention}!')
 
 @client.tree.command()
-async def ping(interaction: discord.Interaction):
+async def pingsb(interaction: discord.Interaction):
     """Returns the bot's latency."""
     await interaction.response.send_message(f'Pong! {int(client.latency * 1000)}ms')
 

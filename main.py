@@ -1,4 +1,3 @@
-from calendar import c
 import logging
 import os
 from dotenv import load_dotenv
@@ -42,9 +41,20 @@ async def on_ready():
     print('------')
 
 @client.tree.command()
+@commands.is_owner()
+async def clear_slash(interaction: discord.Interaction): # use this ONLY if slash commands remain in the guild (list) after removal from code. requires restart after! developer use only!
+    # clr local tree
+    client.tree.clear_commands(guild=None)
+    client.tree.clear_commands(guild=GUILD)
+    # sync empty tree to global
+    await client.tree.sync()
+    await interaction.response.send_message("Cleared all slash commands from `global`, and `guild` (Shadow's Community)\n`INFO:` Restart required to sync.")
+    
+
+@client.tree.command()
 async def hello(interaction: discord.Interaction):
     """Says hello!"""
-    await Interaction.response.send(f'Hello, {interaction.user.mention}!')
+    await interaction.response.send(f'Hello, {interaction.user.mention}!')
 
 @client.tree.command()
 async def pingsb(interaction: discord.Interaction):

@@ -54,7 +54,7 @@ async def clear_slash(interaction: discord.Interaction): # use this ONLY if slas
 @client.tree.command()
 async def hello(interaction: discord.Interaction):
     """Says hello!"""
-    await interaction.response.send(f'Hello, {interaction.user.mention}!')
+    await interaction.response.send_message(f'Hello, {interaction.user.mention}!')
 
 @client.tree.command()
 async def pingsb(interaction: discord.Interaction):

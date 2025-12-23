@@ -1,3 +1,4 @@
+from dis import disco
 import logging
 import os
 from discord import guild, user
@@ -93,6 +94,10 @@ async def mute(interaction: discord.Interaction, member: discord.Member, minutes
     else:
         await interaction.response.send_message("Failed to timeout because the user has a higher role than me.", ephemeral=True)
 
+@client.tree.command(name="membercount", description="Returns the number of members on the server")
+async def membercount(interaction: discord.Interaction):
+    membernum = interaction.guild.member_count
+    await interaction.response.send_message(f'The server has {membernum} members!')
 
 
 if __name__ == "__main__":

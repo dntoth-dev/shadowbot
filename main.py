@@ -1,10 +1,12 @@
 import logging
 import os
+from discord import guild, user
 from dotenv import load_dotenv
 
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
+import datetime
 
 load_dotenv()
 
@@ -15,8 +17,12 @@ DEV = os.getenv("DEV")
 SHADOW_ID = os.getenv("SHADOW_ID") or os.getenv("SHADOW")
 SHADOW = os.getenv("SHADOW")
 SHADOW_GUILD = os.getenv("SHADOWS_COMMUNITY_GUILD_ID")
+ADMIN = os.getenv("ADMIN_ROLE_ID")
+SHADOW_ROLE = os.getenv("SHADOW_ROLE_ID")
+MODERATOR = os.getenv("MODERATOR_ROLE_ID")
 
 GUILD = discord.Object(id=SHADOW_GUILD)
+
 
 if not TOKEN:
     raise SystemExit("BOT_TOKEN environment variable is required.")
@@ -49,7 +55,7 @@ async def clear_slash(interaction: discord.Interaction): # use this ONLY if slas
     # sync empty tree to global
     await client.tree.sync()
     await interaction.response.send_message("Cleared all slash commands from `global`, and `guild` (Shadow's Community)\n`INFO:` Restart required to sync.")
-    
+
 
 @client.tree.command()
 async def hello(interaction: discord.Interaction):
@@ -76,6 +82,17 @@ async def devtest(interaction: discord.Interaction):
         "devtest. Hello world!\n"
         f"`Client connected to Discord Gateway & logged in as {client.user}.`"
     )
+
+@client.tree.command(name="mute", description="Timeout a member (mute).")
+@commands.has_role(SHADOW_ROLE or ADMIN or MODERATOR)
+async def mute(interaction: discord.Interaction, member: discord.Member, minutes: int, reason: str = "No reason provided."):
+    duration = datetime.timedelta(minutes=float(minutes))
+    if interaction.guild.me.top_role >= member.top_role:
+        await member.timeout(duration, reason=reason)
+        await interaction.response.send_message(f"### Timeout successful!\n**User:** {member.name} (ID: {member.id})\n**Duration:** {minutes} minutes\n**Reason:** {reason}")
+    else:
+        await interaction.response.send_message("Failed to timeout because the user has a higher role than me.", ephemeral=True)
+
 
 
 if __name__ == "__main__":

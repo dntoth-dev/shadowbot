@@ -21,6 +21,10 @@ SHADOW_GUILD = os.getenv("SHADOWS_COMMUNITY_GUILD_ID")
 ADMIN = os.getenv("ADMIN_ROLE_ID")
 SHADOW_ROLE = os.getenv("SHADOW_ROLE_ID")
 MODERATOR = os.getenv("MODERATOR_ROLE_ID")
+<<<<<<< Updated upstream
+=======
+YT_API = os.getenv("YOUTUBE_API_KEY")
+>>>>>>> Stashed changes
 
 GUILD = discord.Object(id=SHADOW_GUILD)
 
@@ -84,8 +88,14 @@ async def devtest(interaction: discord.Interaction):
         f"`Client connected to Discord Gateway & logged in as {client.user}.`"
     )
 
+<<<<<<< Updated upstream
 @client.tree.command(name="mute", description="Timeout a member (mute).")
 @commands.has_role(SHADOW_ROLE or ADMIN or MODERATOR)
+=======
+# region Moderation commands
+@client.tree.command(name="mute", description="Timeout a member (mute).")
+@commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
+>>>>>>> Stashed changes
 async def mute(interaction: discord.Interaction, member: discord.Member, minutes: int, reason: str = "No reason provided."):
     duration = datetime.timedelta(minutes=float(minutes))
     if interaction.guild.me.top_role >= member.top_role:
@@ -94,6 +104,22 @@ async def mute(interaction: discord.Interaction, member: discord.Member, minutes
     else:
         await interaction.response.send_message("Failed to timeout because the user has a higher role than me.", ephemeral=True)
 
+<<<<<<< Updated upstream
+=======
+# unmute command here
+
+@client.tree.command(name="kick", description="Kick a member from the server.")
+@commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
+async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided."):
+    if interaction.guild.me.top_role >= member.top_role:
+        await member.kick(reason=reason)
+        await interaction.response.send_message(f"### Kick successful!\n**User:** {member.name} (ID: {member.id})\n**Reason:** {reason}")
+    else:
+        await interaction.response.send_message("Failed to kick because the user has a higher role than me.", ephemeral=True)
+
+# endregion
+
+>>>>>>> Stashed changes
 @client.tree.command(name="membercount", description="Returns the number of members on the server")
 async def membercount(interaction: discord.Interaction):
     membernum = interaction.guild.member_count

@@ -85,26 +85,52 @@ async def devtest(interaction: discord.Interaction):
     )
 
 # region Moderation commands
+# MUTE / TIMEOUT
 @client.tree.command(name="mute", description="Timeout a member (mute).")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
 async def mute(interaction: discord.Interaction, member: discord.Member, minutes: int, reason: str = "No reason provided."):
     duration = datetime.timedelta(minutes=float(minutes))
-    if interaction.guild.me.top_role >= member.top_role:
+    if interaction.guild.me.top_role > member.top_role:
         await member.timeout(duration, reason=reason)
         await interaction.response.send_message(f"### Timeout successful!\n**User:** {member.name} (ID: {member.id})\n**Duration:** {minutes} minutes\n**Reason:** {reason}")
     else:
-        await interaction.response.send_message("Failed to timeout because the user has a higher role than me.", ephemeral=True)
+        await interaction.response.send_message("Failed to mute/timeout because I am not high enough in the role hierarchy.", ephemeral=True)
 
-# unmute command here
+# UNMUTE / UNTIMEOUT
 
+# KICK
 @client.tree.command(name="kick", description="Kick a member from the server.")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
 async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided."):
-    if interaction.guild.me.top_role >= member.top_role:
+    if interaction.guild.me.top_role > member.top_role:
         await member.kick(reason=reason)
         await interaction.response.send_message(f"### Kick successful!\n**User:** {member.name} (ID: {member.id})\n**Reason:** {reason}")
     else:
-        await interaction.response.send_message("Failed to kick because the user has a higher role than me.", ephemeral=True)
+        await interaction.response.send_message("Failed to kick because I am not high enough in the role hierarchy.", ephemeral=True)
+
+# BAN
+@client.tree.command(name="ban", description="Ban a member from the server.")
+@commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
+async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided."):
+    if interaction.guild.me.top_role > member.top_role:
+        await member.ban(reason=reason)
+        await interaction.response.send_message(f"### Ban successful!\n**User:** {member.name} (ID: {member.id})\n**Reason:** {reason}")
+    else:
+        await interaction.response.send_message("Failed to ban because I am not high enough in the role hierarchy.", ephemeral=True)
+        
+# UNBAN
+@client.tree.command(name="unban", description="Unban a member from the server.")
+@commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
+async def unban(interaction: discord.Interaction, user: discord.User, reason: str ="No reason provided."):
+    handled = False
+    async for ban in interaction.guild.bans():
+        if ban.user.id == user.id:
+            await interaction.guild.unban(user, reason=reason)
+            await interaction.response.send_message(f"### Unban successful!\n**User:** {user.name} (ID: {user.id})\n**Reason:** {reason}")
+            handled = True
+    if handled == False:
+        await interaction.response.send("User not found in ban list.", ephemeral=True)
+
 
 # endregion
 
@@ -112,6 +138,7 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
 async def membercount(interaction: discord.Interaction):
     membernum = interaction.guild.member_count
     await interaction.response.send_message(f'The server has {membernum} members!')
+
 
 
 if __name__ == "__main__":

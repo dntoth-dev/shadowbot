@@ -1,7 +1,6 @@
-from email.encoders import encode_7or8bit
 import logging
 import os
-from discord import guild, user
+from discord import Guild, User
 from dotenv import load_dotenv
 
 import discord
@@ -85,7 +84,9 @@ async def devtest(interaction: discord.Interaction):
         f"`Client connected to Discord Gateway & logged in as {client.user}.`"
     )
 
-# region Moderation commands
+# Moderation commands (Timeout/Untimeout, Kick, Ban/Unban)
+# region
+
 # MUTE / TIMEOUT
 @client.tree.command(name="mute", description="Timeout a member (mute).")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
@@ -138,7 +139,7 @@ async def ban(interaction: discord.Interaction, member: discord.Member, reason: 
 # UNBAN
 @client.tree.command(name="unban", description="Unban a member from the server.")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
-async def unban(interaction: discord.Interaction, user: discord.User, reason: str ="No reason provided."):
+async def unban(interaction: discord.Interaction, user: User, reason: str ="No reason provided."):
     try:
         handled = False
         async for ban in interaction.guild.bans():
@@ -153,6 +154,7 @@ async def unban(interaction: discord.Interaction, user: discord.User, reason: st
 
 # endregion
 
+# Membercount command
 @client.tree.command(name="membercount", description="Returns the number of members on the server")
 async def membercount(interaction: discord.Interaction):
     try:
@@ -161,6 +163,76 @@ async def membercount(interaction: discord.Interaction):
     except Exception as e:
         return e
 
+# Member records commands
+# region
+
+# Recordsauthor command
+@client.tree.command(name="recordsauthor", description="Show the records of a user")
+@app_commands.checks.has_permissions(view_audit_log=True)
+async def recordsauthor(interaction: discord.Interaction, user: discord.User):
+    # 1. Acknowledge the command immediately
+    await interaction.response.send_message(f"### Records of: **{user.name}** (ID: {user.id})\nSearching logs...")
+
+    try:
+        found_logs = False
+        # 2. Filter audit logs by the specific user to save memory and time
+        async for entry in interaction.guild.audit_logs(limit=10, user=user):
+            found_logs = True
+            log_message = (
+                f"**Moderator:** <@{entry.user_id}>\n"
+                f"**Action:** {entry.action}\n"
+                f"**Target:** {entry.target}\n"
+                f"**Reason:** {entry.reason if entry.reason else 'No reason provided'}\n"
+                "---"
+            )
+            # 3. Use followup because the initial response is already sent
+            await interaction.followup.send(content=log_message)
+
+        if not found_logs:
+            await interaction.followup.send("No recent audit log entries found for this user.", ephemeral=True)
+
+    except discord.Forbidden:
+        await interaction.followup.send("I do not have the 'View Audit Log' permission.", ephemeral=True)
+    except Exception as e:
+        print(f"Error: {e}")
+        await interaction.followup.send("An error occurred while fetching logs.", ephemeral=True)
+
+
+# Recordstarget command
+@client.tree.command(name="recordstarget", description="Show records targeted at a user")
+@app_commands.checks.has_permissions(view_audit_log=True)
+async def recordstarget(interaction: discord.Interaction, user: discord.User):
+    # 1. Immediate response to prevent timeout
+    await interaction.response.send_message(f"### Actions taken against: **{user.name}**\nSearching...")
+
+    try:
+        results = []
+        # 2. Iterate with a limit. Note: target filtering happens in the loop
+        async for entry in interaction.guild.audit_logs(limit=100):
+            if entry.target and entry.target.id == user.id:
+                Action = f"**Action:** {entry.action}"
+                results.append(
+                    f"**Target:** {entry.target}\n"
+                    f"**Action:** {entry.action}\n"
+                    f"**Moderator:** <@{entry.user_id}>\n"
+                    f"**Reason:** {entry.reason or 'No reason provided'}\n"
+                    "---"
+                )
+
+        if not results:
+            await interaction.followup.send("No records found for this user in the last 100 audit entries.", ephemeral=True)
+        else:
+            # 3. Join results to avoid sending dozens of individual messages (avoids rate limits)
+            full_log = "\n".join(results)
+            # If the log is too long for one message (2000 char limit), we slice it
+            await interaction.followup.send(content=full_log[:2000])
+
+    except discord.Forbidden:
+        await interaction.followup.send("I don't have 'View Audit Log' permissions.", ephemeral=True)
+    except Exception as e:
+        print(f"Error: {e}")
+        await interaction.followup.send("An error occurred.", ephemeral=True)
+# endregion
 
 if __name__ == "__main__":
     client.run(TOKEN)

@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 from discord import Guild, User
 from dotenv import load_dotenv
@@ -7,6 +7,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 import datetime
+from googleapiclient.discovery import build
 
 load_dotenv()
 
@@ -21,8 +22,10 @@ ADMIN = os.getenv("ADMIN_ROLE_ID")
 SHADOW_ROLE = os.getenv("SHADOW_ROLE_ID")
 MODERATOR = os.getenv("MODERATOR_ROLE_ID")
 YT_API = os.getenv("YOUTUBE_API_KEY")
+SM_CH_ID = os.getenv("SM_YT_CHANNEL_ID")
 
 GUILD = discord.Object(id=SHADOW_GUILD)
+youtube = build('youtube', 'v3', developerKey=YT_API)
 
 
 if not TOKEN:
@@ -233,6 +236,44 @@ async def recordstarget(interaction: discord.Interaction, user: discord.User):
         print(f"Error: {e}")
         await interaction.followup.send("An error occurred.", ephemeral=True)
 # endregion
+# YouTube integration commands
+# region
+
+@client.tree.command(name="recentvids", description="Get recent videos of Shadow!")
+@app_commands.describe(amount="Number of recent videos to fetch (max 5).")
+async def recentvids(interaction: Interaction, amount: int):
+    try:
+        if amount > 5:
+            await interaction.response.send_message("The maximum number of videos to return is 5!", ephemeral=True)
+            return
+
+        # convert channel ID (UC...) to uploads playlist ID (UU...)
+        uploads_playlist_id = f"UU{SM_CH_ID[2:]}"
+
+        # 2. Fetch the latest item from that playlist
+        request = youtube.playlistItems().list(
+            playlistId=uploads_playlist_id,
+            part="snippet",
+            maxResults=amount
+        )
+        response = request.execute()
+
+        if not response['items']:
+            await interaction.response.send_message("No videos found for this channel.")
+            return
+        else:
+            await interaction.response.send_message(f"🎥 Recent {amount} videos from Shadow's YouTube channel:")
+        
+        for i in response['items']:
+            video_data = i['snippet']
+            video_title = video_data['title']
+            video_id = video_data['resourceId']['videoId']
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            await interaction.followup.send(f"🎬 **{video_title}**\n{video_url}")
+
+    except Exception as e:
+        await interaction.response.send_message("❌ Error!")
+        print(f"Error fetching latest video: {e}")
 
 if __name__ == "__main__":
     client.run(TOKEN)

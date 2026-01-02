@@ -50,17 +50,8 @@ async def on_ready():
     print(f'Logged in as {client.user} (ID: {client.user.id})')
     print('------')
 
-@client.tree.command(name="clear_slash", description="Clear all slash commands in case of a bug. - **Developer use only!**")
-@commands.is_owner()
-async def clear_slash(interaction: discord.Interaction): # use this ONLY if slash commands remain in the guild (list) after removal from code. requires restart after! developer use only!
-    # clr local tree
-    client.tree.clear_commands(guild=None)
-    client.tree.clear_commands(guild=GUILD)
-    # sync empty tree to global
-    await client.tree.sync()
-    await interaction.response.send_message("Cleared all slash commands from `global`, and `guild` (Shadow's Community)\n`INFO:` Restart required to sync.")
-
-
+# Basic commands
+# region
 @client.tree.command(name="hello", description="Says hello to the user.")
 async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f'Hello, {interaction.user.mention}!')
@@ -70,23 +61,70 @@ async def pingsb(interaction: discord.Interaction):
     """Returns the bot's latency."""
     await interaction.response.send_message(f'Pong! {int(client.latency * 1000)}ms')
 
-@client.tree.command(name="am_i_shadow", description="Returns if the user is @Shadow Master or not.")
+@client.tree.command(name="am_i_shadow", description=f"Returns if the user is <@{SHADOW_ID}> or not.")
 async def am_i_shadow(interaction: discord.Interaction):
     if str(interaction.user.id) == SHADOW_ID:
         await interaction.response.send_message(f'Yes, you are {SHADOW}.')
     else:
         await interaction.response.send_message(f"You ain't {SHADOW} :(")
 
-@client.tree.command(name="devtest", description="Bot status test command. - **Developer use only!**")
-@commands.is_owner()
-async def devtest(interaction: discord.Interaction):
-    """Dev-only test command usable only by the application/bot owner."""
-    await interaction.response.send_message(
-        "devtest. Hello world!\n"
-        f"`Client connected to Discord Gateway & logged in as {client.user}.`"
-    )
+@client.tree.command(name="membercount", description="Returns the number of members on the server.")
+async def membercount(interaction: discord.Interaction):
+    try:
+        membernum = interaction.guild.member_count
+        await interaction.response.send_message(f'The server has {membernum} members!')
+    except Exception as e:
+        return e
 
-# Moderation commands (Timeout/Untimeout, Kick, Ban/Unban)
+@client.tree.command(name="recentvids", description="Get recent videos of Shadow!")
+@app_commands.describe(amount="Number of recent videos to fetch (max 5).")
+async def recentvids(interaction: Interaction, amount: int):
+    try:
+        if amount > 5:
+            await interaction.response.send_message("The maximum number of videos to return is 5!", ephemeral=True)
+            return
+
+        # convert channel ID (UC...) to uploads playlist ID (UU...)
+        uploads_playlist_id = f"UU{SM_CH_ID[2:]}"
+
+        # 2. Fetch the latest item from that playlist
+        request = youtube.playlistItems().list(
+            playlistId=uploads_playlist_id,
+            part="snippet",
+            maxResults=amount
+        )
+        response = request.execute()
+
+        if not response['items']:
+            await interaction.response.send_message("No videos found for this channel.")
+            return
+        else:
+            await interaction.response.send_message(f"🎥 Recent {amount} videos from Shadow's YouTube channel:")
+        
+        for i in response['items']:
+            video_data = i['snippet']
+            video_title = video_data['title']
+            video_id = video_data['resourceId']['videoId']
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            await interaction.followup.send(f"🎬 **{video_title}**\n{video_url}")
+
+    except Exception as e:
+        await interaction.response.send_message("❌ Error!")
+        print(f"Error fetching latest video: {e}")
+
+@client.tree.command(name='commands', description='View the current available commands of the bot')
+async def commands_list(interaction: Interaction):
+    """Sends a list of all available slash commands."""
+    commands = client.tree.get_commands(guild=GUILD)
+    command_list = "\n".join([f"`/{cmd.name}` - {cmd.description}" for cmd in commands])
+    await interaction.response.send_message(f"### Current Commands:\n{command_list}")
+
+# endregion
+
+# Moderator use only commands (and all higher roles)
+# region
+
+# User status management commands (TIMEOUT/UNTIMEOUT, KICK, BAN/UNBAN)
 # region
 
 # MUTE / TIMEOUT
@@ -125,6 +163,7 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
             await interaction.response.send_message("Failed to kick because I am not high enough in the role hierarchy.", ephemeral=True)
     except Exception as e:
         return e
+
 # BAN
 @client.tree.command(name="ban", description="Ban a member from the server. - **Moderator use only!**")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
@@ -156,16 +195,7 @@ async def unban(interaction: discord.Interaction, user: User, reason: str ="No r
 
 # endregion
 
-# Membercount command
-@client.tree.command(name="membercount", description="Returns the number of members on the server.")
-async def membercount(interaction: discord.Interaction):
-    try:
-        membernum = interaction.guild.member_count
-        await interaction.response.send_message(f'The server has {membernum} members!')
-    except Exception as e:
-        return e
-
-# Member records commands
+# Member records commands (RECORDSAUTHOR, RECORDSTARGET)
 # region
 
 # Recordsauthor command
@@ -235,51 +265,32 @@ async def recordstarget(interaction: discord.Interaction, user: discord.User):
         print(f"Error: {e}")
         await interaction.followup.send("An error occurred.", ephemeral=True)
 # endregion
-# YouTube integration commands
+
+# endregion
+
+# Developer use only commands (bot owner)
 # region
 
-@client.tree.command(name="recentvids", description="Get recent videos of Shadow!")
-@app_commands.describe(amount="Number of recent videos to fetch (max 5).")
-async def recentvids(interaction: Interaction, amount: int):
-    try:
-        if amount > 5:
-            await interaction.response.send_message("The maximum number of videos to return is 5!", ephemeral=True)
-            return
+@client.tree.command(name="clear_slash", description="Clear all slash commands in case of a bug. - **Developer use only!**")
+@commands.is_owner()
+async def clear_slash(interaction: discord.Interaction): # use this ONLY if slash commands remain in the guild (list) after removal from code. requires restart after! developer use only!
+    # clr local tree
+    client.tree.clear_commands(guild=None)
+    client.tree.clear_commands(guild=GUILD)
+    # sync empty tree to global
+    await client.tree.sync()
+    await interaction.response.send_message("Cleared all slash commands from `global`, and `guild` (Shadow's Community)\n`INFO:` Restart required to sync.")
 
-        # convert channel ID (UC...) to uploads playlist ID (UU...)
-        uploads_playlist_id = f"UU{SM_CH_ID[2:]}"
+@client.tree.command(name="devtest", description="Bot status test command. - **Developer use only!**")
+@commands.is_owner()
+async def devtest(interaction: discord.Interaction):
+    """Dev-only test command usable only by the application/bot owner."""
+    await interaction.response.send_message(
+        "devtest. Hello world!\n"
+        f"`Client connected to Discord Gateway & logged in as {client.user}.`"
+    )
 
-        # 2. Fetch the latest item from that playlist
-        request = youtube.playlistItems().list(
-            playlistId=uploads_playlist_id,
-            part="snippet",
-            maxResults=amount
-        )
-        response = request.execute()
-
-        if not response['items']:
-            await interaction.response.send_message("No videos found for this channel.")
-            return
-        else:
-            await interaction.response.send_message(f"🎥 Recent {amount} videos from Shadow's YouTube channel:")
-        
-        for i in response['items']:
-            video_data = i['snippet']
-            video_title = video_data['title']
-            video_id = video_data['resourceId']['videoId']
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
-            await interaction.followup.send(f"🎬 **{video_title}**\n{video_url}")
-
-    except Exception as e:
-        await interaction.response.send_message("❌ Error!")
-        print(f"Error fetching latest video: {e}")
-
-@client.tree.command(name='commands', description='View the current available commands of the bot')
-async def commands_list(interaction: Interaction):
-    """Sends a list of all available slash commands."""
-    commands = client.tree.get_commands(guild=GUILD)
-    command_list = "\n".join([f"`/{cmd.name}` - {cmd.description}" for cmd in commands])
-    await interaction.response.send_message(f"### Current Commands:\n{command_list}")
+# endregion
 
 if __name__ == "__main__":
     client.run(TOKEN)

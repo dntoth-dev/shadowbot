@@ -50,7 +50,7 @@ async def on_ready():
     print(f'Logged in as {client.user} (ID: {client.user.id})')
     print('------')
 
-@client.tree.command()
+@client.tree.command(name="clear_slash", description="Clear all slash commands in case of a bug. - **Developer use only!**")
 @commands.is_owner()
 async def clear_slash(interaction: discord.Interaction): # use this ONLY if slash commands remain in the guild (list) after removal from code. requires restart after! developer use only!
     # clr local tree
@@ -61,24 +61,23 @@ async def clear_slash(interaction: discord.Interaction): # use this ONLY if slas
     await interaction.response.send_message("Cleared all slash commands from `global`, and `guild` (Shadow's Community)\n`INFO:` Restart required to sync.")
 
 
-@client.tree.command()
+@client.tree.command(name="hello", description="Says hello to the user.")
 async def hello(interaction: discord.Interaction):
-    """Says hello!"""
     await interaction.response.send_message(f'Hello, {interaction.user.mention}!')
 
-@client.tree.command()
+@client.tree.command(name="pingsb", description="Returns the bot's latency.")
 async def pingsb(interaction: discord.Interaction):
     """Returns the bot's latency."""
     await interaction.response.send_message(f'Pong! {int(client.latency * 1000)}ms')
 
-@client.tree.command()
+@client.tree.command(name="am_i_shadow", description="Returns if the user is @Shadow Master or not.")
 async def am_i_shadow(interaction: discord.Interaction):
     if str(interaction.user.id) == SHADOW_ID:
         await interaction.response.send_message(f'Yes, you are {SHADOW}.')
     else:
         await interaction.response.send_message(f"You ain't {SHADOW} :(")
 
-@client.tree.command()
+@client.tree.command(name="devtest", description="Bot status test command. - **Developer use only!**")
 @commands.is_owner()
 async def devtest(interaction: discord.Interaction):
     """Dev-only test command usable only by the application/bot owner."""
@@ -91,7 +90,7 @@ async def devtest(interaction: discord.Interaction):
 # region
 
 # MUTE / TIMEOUT
-@client.tree.command(name="mute", description="Timeout a member (mute).")
+@client.tree.command(name="mute", description="Timeout a member (mute). - **Moderator use only!**")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
 async def mute(interaction: discord.Interaction, member: discord.Member, minutes: int, reason: str = "No reason provided."):
     duration = datetime.timedelta(minutes=float(minutes))
@@ -105,7 +104,7 @@ async def mute(interaction: discord.Interaction, member: discord.Member, minutes
         return e
 
 # UNMUTE / UNTIMEOUT
-@client.tree.command(name="unmute", description="Remove timeout (unmute) from a member.")
+@client.tree.command(name="unmute", description="Remove timeout (unmute) from a member. - **Moderator use only!**")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
 async def unmute(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided."):
     if interaction.guild.me.top_role > member.top_role:
@@ -115,7 +114,7 @@ async def unmute(interaction: discord.Interaction, member: discord.Member, reaso
         await interaction.response.send_message("Failed to unmute/untimeout because I am not high enough in the role hierarchy.", ephemeral=True)
 
 # KICK
-@client.tree.command(name="kick", description="Kick a member from the server.")
+@client.tree.command(name="kick", description="Kick a member from the server. - **Moderator use only!**")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
 async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided."):
     try:
@@ -127,7 +126,7 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
     except Exception as e:
         return e
 # BAN
-@client.tree.command(name="ban", description="Ban a member from the server.")
+@client.tree.command(name="ban", description="Ban a member from the server. - **Moderator use only!**")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
 async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided."):
     try:
@@ -140,7 +139,7 @@ async def ban(interaction: discord.Interaction, member: discord.Member, reason: 
         return e
 
 # UNBAN
-@client.tree.command(name="unban", description="Unban a member from the server.")
+@client.tree.command(name="unban", description="Unban a member from the server. - **Moderator use only!**")
 @commands.has_any_role(SHADOW_ROLE or ADMIN or MODERATOR)
 async def unban(interaction: discord.Interaction, user: User, reason: str ="No reason provided."):
     try:
@@ -158,7 +157,7 @@ async def unban(interaction: discord.Interaction, user: User, reason: str ="No r
 # endregion
 
 # Membercount command
-@client.tree.command(name="membercount", description="Returns the number of members on the server")
+@client.tree.command(name="membercount", description="Returns the number of members on the server.")
 async def membercount(interaction: discord.Interaction):
     try:
         membernum = interaction.guild.member_count
@@ -170,7 +169,7 @@ async def membercount(interaction: discord.Interaction):
 # region
 
 # Recordsauthor command
-@client.tree.command(name="recordsauthor", description="Show the records of a user")
+@client.tree.command(name="recordsauthor", description="Show the records of a user. - **Moderator use only!**")
 @app_commands.checks.has_permissions(view_audit_log=True)
 async def recordsauthor(interaction: discord.Interaction, user: discord.User):
     # 1. Acknowledge the command immediately
@@ -202,7 +201,7 @@ async def recordsauthor(interaction: discord.Interaction, user: discord.User):
 
 
 # Recordstarget command
-@client.tree.command(name="recordstarget", description="Show records targeted at a user")
+@client.tree.command(name="recordstarget", description="Show records targeted at a user. - **Moderator use only!**")
 @app_commands.checks.has_permissions(view_audit_log=True)
 async def recordstarget(interaction: discord.Interaction, user: discord.User):
     # 1. Immediate response to prevent timeout
@@ -274,6 +273,13 @@ async def recentvids(interaction: Interaction, amount: int):
     except Exception as e:
         await interaction.response.send_message("❌ Error!")
         print(f"Error fetching latest video: {e}")
+
+@client.tree.command(name='commands', description='View the current available commands of the bot')
+async def commands_list(interaction: Interaction):
+    """Sends a list of all available slash commands."""
+    commands = client.tree.get_commands(guild=GUILD)
+    command_list = "\n".join([f"`/{cmd.name}` - {cmd.description}" for cmd in commands])
+    await interaction.response.send_message(f"### Current Commands:\n{command_list}")
 
 if __name__ == "__main__":
     client.run(TOKEN)
